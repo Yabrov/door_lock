@@ -9,7 +9,7 @@
 #define CARD_CODE_SIZE 12  // Длина кода карты
 #define NUMBER_OF_CARDS 5 // Количество карт
 
-// Массив кодов используемых (валидных) карт сотрудников
+// Массив кодов используемых (валидных) карт
 uint8_t cards[NUMBER_OF_CARDS][CARD_CODE_SIZE] = {
   {'7','4','0','0','2','A','A','D','D','F','2','C'},
   {'B','1','D','3','A','B','5','1','8','4','D','C'},
@@ -41,13 +41,13 @@ word count;
 volatile bool isActionRequired = false;
 
 // Начальные установки
-void setup() {  
-  clearBuffer();
+void setup() {
   motor.attach(CONTROL);
   pinMode(LED_CLOSE, OUTPUT);
   pinMode(LED_OPEN, OUTPUT);
   pinMode(SPEAKER, OUTPUT);
   pinMode(BUTTON, INPUT);
+  Serial.begin(SERIAL_BAUD_RATE);
   if (getCurrentLockState() == LOCKED) {
     digitalWrite(LED_CLOSE, HIGH);
     digitalWrite(LED_OPEN, LOW);
@@ -57,7 +57,6 @@ void setup() {
   }
   // Вешаем прерывание на кнопку управления
   attachInterrupt(BUTTON, requireAction, RISING);
-  Serial.begin(SERIAL_BAUD_RATE);
 }
 
 // Функция для получения текущего положения замка
@@ -78,10 +77,12 @@ void openDoor() {
     tone(SPEAKER, notes[i], times[i]);
     delay(times[i]/10);
   }
+  digitalWrite(LED_CLOSE, LOW);
+  digitalWrite(LED_OPEN, HIGH);
   // Открыть замок
-  motor.write(0);
+  motor.write(0);  
   delay(50);
-  // Скидываю прерывание
+  // Скидываю флаг
   isActionRequired = false;
 }
 
@@ -90,9 +91,11 @@ void closeDoor() {
   // Издаю короткий бииип
   tone(SPEAKER, 1000, 200);
   delay(3000); // Задержка 3 сек.
+  digitalWrite(LED_CLOSE, HIGH);
+  digitalWrite(LED_OPEN, LOW);
   motor.write(85);  // Закрыть замок
   delay(50);
-  // Скидываю прерывание
+  // Скидываю флаг
   isActionRequired = false;
 }
 
@@ -107,8 +110,8 @@ bool checkCard() {
    * порта заполниться до конца.
    */
   delay(100);
-  clearBuffer();
   count = 0;
+  clearBuffer();
   // Сканируем карту в buffer
   while (Serial.available()) {
     if (count > CARD_CODE_SIZE) break;
